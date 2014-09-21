@@ -346,7 +346,7 @@ var config = {
 
 function Menu(items){
   this.items = [];
-  this.anchor.x = 40;
+  this.anchor.x = 45;
   this.anchor.y = 540;
   var x = 0;
   var left = null;
@@ -410,8 +410,8 @@ Menu.prototype = {
     }
     if(new_selection && new_selection.index !== this.selected.index){
       this.anchor.x += (d*10);
-      new_selection.openSubMenu(100);
-      this.selected.closeSubMenu(100);
+      this.items[new_selection.index].openSubMenu(100);
+      this.items[this.selected.index].closeSubMenu(100);
     }
     this.selected = new_selection || this.selected;
     this.draw();
