@@ -178,7 +178,7 @@ function Menu(items){
     this.items.push(new MenuItem(item));
     x += this.padding + this.items[i].width;
   }
-  this.items[this.selected].selected = true;
+  this.items[this.index].selected = true;
   var self = this;
   document.body.addEventListener('keydown', function(e){
     self.dispatch(e);
@@ -201,8 +201,15 @@ Menu.prototype = {
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   },
-  move: function(dx, dy){
-    console.log("move");
+  moveUD: function(d){
+    console.log('Up down');
+  },
+  moveRL: function(d){
+    var new_index = this.index + d;
+    if (-1 < new_index  && new_index < this.items.length){
+      this.set_selected(new_index);
+      this.draw();
+    }
   },
   push: function(index, dir){
 
@@ -217,19 +224,27 @@ Menu.prototype = {
     } else if (this.visible){
       switch(e.keyCode){
         case 37:  // Left
-          this.move(-1, 0);
+          this.moveRL(-1);
           break;
         case 38:  // Up
-          this.move(0, -1);
+          this.moveUD(1);
           break;
         case 39:  // Right
-          this.move(1, 0);
+          this.moveRL(1);
           break;
         case 40:  // Down
-          this.move(0, 1);
+          this.moveUD(-1);
           break;
       }
     }
+  },
+  set_selected: function(index){
+    this.get_selected().selected = false;
+    this.index = index;
+    this.get_selected().selected = true;
+  },
+  get_selected: function(){
+    return this.items[this.index];
   },
   draw: function(){
     this.clear();
@@ -238,8 +253,8 @@ Menu.prototype = {
     }
   },
   visible: true,
-  selected: 3,
-  sub_index: 0,
+  index: 3,
+  sub_index: -1,
 
 }
 
