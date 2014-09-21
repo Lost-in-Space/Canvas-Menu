@@ -48,44 +48,6 @@ function MenuItem(obj){
     this.labelOffsetY += this.icon.height/2 + this.padding;
   }
 
-  // Configure Sub menu items, made assumptions based on short term goal
-  if(this.subitems){
-    this.subMenu = [];
-    var item = null;
-    if(this.subitems.cols === 1){
-      // configure single column text only
-      var height = this.fontSize*3;
-      var y = this.y;
-      for (i in this.subitems.items){
-        y -= this.padding + height;
-        item = this.subitems.items[i];
-        item.height = height;
-        item.y = y;
-        item.x = this.x;
-        this.subMenu.push(new MenuItem(item));
-      }
-    } else {
-      // configure 2 column icon only
-      var width = (this.width - this.padding)/2; // make selections square, half the width of parent - padding
-      var x = this.x;
-      var y = this.y;
-      for (i in this.subitems.items){
-        for (j in this.subitems.items[i]){
-          y -= width + this.padding;
-          item = this.subitems.items[i][j];
-          item.x = x;
-          item.y = y;
-          item.width = width;
-          item.height = width;
-          console.log(item);
-          this.subMenu.push(new MenuItem(item));
-        }
-        x += width + this.padding;
-        y = this.y;
-      }
-
-    }
-  }
 
   this.desiredX = this.x;
   this.desiredY = this.y;
@@ -97,6 +59,68 @@ function MenuItem(obj){
 MenuItem.prototype = {
   padding: 5,
   constructor: MenuItem,
+  init_submenu: function(){
+    // Configure Sub menu items, made assumptions based on short term goal
+    if(this.subitems){
+      this.subMenu = [];
+      var item = null;
+      if(this.subitems.cols === 1){
+        // configure single column text only
+        var height = this.fontSize*3;
+        var y = this.y;
+        var down = this;
+        for (i in this.subitems.items){
+          y -= this.padding + height;
+          item = this.subitems.items[i];
+          item.height = height;
+          item.y = y;
+          item.x = this.x;
+          item.index = this.index;
+          item.down = down;
+          item.left = this.left;
+          item.right = this.right;
+          item = new MenuItem(item);
+          down.up = item;
+          down = item;
+          this.subMenu.push(item);
+        }
+      } else {
+        // configure 2 column icon only
+        var width = (this.width - this.padding)/2; // make selections square, half the width of parent - padding
+        var x = null;
+        var y = this.y;
+        var down = [this, this];  // continuing contrived case of two columns
+        var left = null;
+        for (i in this.subitems.items){
+          y -= width + this.padding;
+          x = this.x;
+          left = null;
+          for (j in this.subitems.items[i]){
+            item = this.subitems.items[i][j];
+            item.x = x;
+            item.y = y;
+            item.width = width;
+            item.height = width;
+            item.index = this.index;
+            item.down = down[j];
+            item.right = this.right;
+            item.left = this.left;
+            item = new MenuItem(item);
+            down[j].up = item;
+            down[j] = item;
+            if(left){
+              item.left = left;
+              left.right = item;
+            }
+            left = item;
+            this.subMenu.push(item);
+            x += width + this.padding;
+          }
+        }
+
+      }
+    }
+  },
   extend: extend,
   x: 0,
   y: 0,
@@ -116,6 +140,11 @@ MenuItem.prototype = {
   fontFamily: 'Arial',
   subitems: null,
   initialized: false,
+  left: null,
+  right: null,
+  up: null,
+  down: null,
+  index: null,
 
   drawIcon: function(){
     var x = this.x + this.iconOffsetX;
@@ -138,6 +167,14 @@ MenuItem.prototype = {
     this.ctx.fillRect(this.x, this.y, this.width, this.height);
   },
 
+  drawSubMenu: function(){
+    if(this.subMenu){
+      for (i in this.subMenu){
+        this.subMenu[i].draw();
+      }
+    }
+  },
+
   draw: function(){
     this.ctx.fillStyle = this.fill;
     this.ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -146,14 +183,6 @@ MenuItem.prototype = {
     }
     if (this.drawLabel){
       this.drawLabel();
-    }
-    if (this.selected){
-      this.drawSelected();
-      if(this.subMenu){
-        for (i in this.subMenu){
-          this.subMenu[i].draw();
-        }
-      }
     }
   }
 }
@@ -247,15 +276,27 @@ function Menu(items){
   this.items = [];
   var x = this.x;
   var y = this.y;
+  var left = null;
   for (i in items){
     item = items[i];
     item.x = x;
     item.y = y;
+    item.index = i;
+    item = new MenuItem(item);
+    if(left){
+      item.left = left;
+      left.right = item;
+    }
+    left = item;
     console.log(item);
-    this.items.push(new MenuItem(item));
+    this.items.push(item);
     x += this.padding + this.items[i].width;
   }
-  this.items[this.index].selected = true;
+
+  for (i in this.items){
+    this.items[i].init_submenu();
+  }
+  this.selected = this.items[this.start_index];
   var self = this;
   document.body.addEventListener('keydown', function(e){
     self.dispatch(e);
@@ -279,14 +320,24 @@ Menu.prototype = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   },
   moveUD: function(d){
-    console.log('Up down');
+    var new_selection = null;
+    if (d > 0){
+      new_selection = this.selected.up;
+    } else {
+      new_selection = this.selected.down;
+    }
+    this.selected = new_selection || this.selected;
+    this.draw();
   },
   moveRL: function(d){
-    var new_index = this.index + d;
-    if (-1 < new_index  && new_index < this.items.length){
-      this.set_selected(new_index);
-      this.draw();
+    var new_selection = null;
+    if (d > 0){
+      new_selection = this.selected.right;
+    } else {
+      new_selection = this.selected.left;
     }
+    this.selected = new_selection || this.selected;
+    this.draw();
   },
   push: function(index, dir){
 
@@ -315,23 +366,17 @@ Menu.prototype = {
       }
     }
   },
-  set_selected: function(index){
-    this.get_selected().selected = false;
-    this.index = index;
-    this.get_selected().selected = true;
-  },
-  get_selected: function(){
-    return this.items[this.index];
-  },
+  selected: null,
   draw: function(){
     this.clear();
     for (i in this.items){
       this.items[i].draw();
     }
+    this.items[this.selected.index].drawSubMenu();
+    this.selected.drawSelected();
   },
   visible: true,
-  index: 3,
-  sub_index: -1,
+  start_index: 3,
 
 }
 
