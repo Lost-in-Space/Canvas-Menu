@@ -81,6 +81,7 @@ function MenuItem(obj){
           this.subMenu.push(new MenuItem(item));
         }
         x += width + this.padding;
+        y = this.y;
       }
 
     }
