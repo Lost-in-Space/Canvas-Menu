@@ -179,6 +179,10 @@ function Menu(items){
     x += this.padding + this.items[i].width;
   }
   this.items[this.selected].selected = true;
+  var self = this;
+  document.body.addEventListener('keydown', function(e){
+    self.dispatch(e);
+  });
 }
 
 Menu.prototype = {
@@ -187,16 +191,45 @@ Menu.prototype = {
   x: 45,
   y: 540,
   show: function(){
+    this.visible = true;
     this.draw();
   },
   hide: function(){
+    this.visible = false;
     this.clear();
   },
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   },
+  move: function(dx, dy){
+    console.log("move");
+  },
   push: function(index, dir){
 
+  },
+  dispatch: function(e){
+    if(e.keyCode === 77){  // M
+      if (this.visible){
+        this.hide();
+      } else {
+        this.show();
+      }
+    } else if (this.visible){
+      switch(e.keyCode){
+        case 37:  // Left
+          this.move(-1, 0);
+          break;
+        case 38:  // Up
+          this.move(0, -1);
+          break;
+        case 39:  // Right
+          this.move(1, 0);
+          break;
+        case 40:  // Down
+          this.move(0, 1);
+          break;
+      }
+    }
   },
   draw: function(){
     this.clear();
@@ -204,7 +237,7 @@ Menu.prototype = {
       this.items[i].draw();
     }
   },
-  show: true,
+  visible: true,
   selected: 3,
   sub_index: 0,
 
