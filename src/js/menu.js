@@ -16,6 +16,16 @@ function extend(obj){
     this[x] = obj[x];
 }
 
+var anchor = {
+  x: 0,
+  y: 0,
+  getX: function(){
+    return this.x;
+  },
+  getY: function(){
+    return this.y;
+  }
+}
 
 function MenuItem(obj){
   // only initialize once
@@ -67,14 +77,14 @@ MenuItem.prototype = {
       if(this.subitems.cols === 1){
         // configure single column text only
         var height = this.fontSize*3;
-        var y = this.y;
+        var y = 0;
         var down = this;
         for (i in this.subitems.items){
           y -= this.padding + height;
           item = this.subitems.items[i];
           item.height = height;
           item.y = y;
-          item.x = this.x;
+          item.anchor = this;
           item.index = this.index;
           item.down = down;
           item.left = this.left;
@@ -87,18 +97,19 @@ MenuItem.prototype = {
       } else {
         // configure 2 column icon only
         var width = (this.width - this.padding)/2; // make selections square, half the width of parent - padding
-        var x = null;
-        var y = this.y;
+        var x = 0;
+        var y = 0;
         var down = [this, this];  // continuing contrived case of two columns
         var left = null;
         for (i in this.subitems.items){
           y -= width + this.padding;
-          x = this.x;
+          x = 0;
           left = null;
           for (j in this.subitems.items[i]){
             item = this.subitems.items[i][j];
             item.x = x;
             item.y = y;
+            item.anchor = this;
             item.width = width;
             item.height = width;
             item.index = this.index;
@@ -145,16 +156,23 @@ MenuItem.prototype = {
   up: null,
   down: null,
   index: null,
+  anchor: anchor,
+  getX: function(){
+    return this.anchor.getX() + this.x;
+  },
+  getY: function(){
+    return this.anchor.getY() + this.y;
+  },
 
   drawIcon: function(){
-    var x = this.x + this.iconOffsetX;
-    var y = this.y + this.iconOffsetY;
+    var x = this.getX() + this.iconOffsetX;
+    var y = this.getY() + this.iconOffsetY;
     this.ctx.drawImage(this.icon, x, y);
   },
 
   drawLabel: function(){
-    var x = this.x + this.labelOffsetX;
-    var y = this.y + this.labelOffsetY;
+    var x = this.getX() + this.labelOffsetX;
+    var y = this.getY() + this.labelOffsetY;
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
     this.ctx.font = this.font;
@@ -164,7 +182,7 @@ MenuItem.prototype = {
 
   drawSelected: function(){
     this.ctx.fillStyle = this.fillSelected;
-    this.ctx.fillRect(this.x, this.y, this.width, this.height);
+    this.ctx.fillRect(this.getX(), this.getY(), this.width, this.height);
   },
 
   drawSubMenu: function(){
@@ -177,7 +195,7 @@ MenuItem.prototype = {
 
   draw: function(){
     this.ctx.fillStyle = this.fill;
-    this.ctx.fillRect(this.x, this.y, this.width, this.height);
+    this.ctx.fillRect(this.getX(), this.getY(), this.width, this.height);
     if (this.drawIcon){
       this.drawIcon();
     }
@@ -274,13 +292,13 @@ var config = {
 
 function Menu(items){
   this.items = [];
-  var x = this.x;
-  var y = this.y;
+  this.anchor.x = 40;
+  this.anchor.y = 540;
+  var x = 0;
   var left = null;
   for (i in items){
     item = items[i];
     item.x = x;
-    item.y = y;
     item.index = i;
     item = new MenuItem(item);
     if(left){
@@ -306,8 +324,7 @@ function Menu(items){
 Menu.prototype = {
   constructor: Menu,
   padding: 5,
-  x: 45,
-  y: 540,
+  anchor: anchor,
   show: function(){
     this.visible = true;
     this.draw();
@@ -331,10 +348,13 @@ Menu.prototype = {
   },
   moveRL: function(d){
     var new_selection = null;
-    if (d > 0){
+    if (d < 0){
       new_selection = this.selected.right;
     } else {
       new_selection = this.selected.left;
+    }
+    if(new_selection && new_selection.index !== this.selected.index){
+      this.anchor.x += (d*10);
     }
     this.selected = new_selection || this.selected;
     this.draw();
@@ -352,13 +372,13 @@ Menu.prototype = {
     } else if (this.visible){
       switch(e.keyCode){
         case 37:  // Left
-          this.moveRL(-1);
+          this.moveRL(1);
           break;
         case 38:  // Up
           this.moveUD(1);
           break;
         case 39:  // Right
-          this.moveRL(1);
+          this.moveRL(-1);
           break;
         case 40:  // Down
           this.moveUD(-1);
