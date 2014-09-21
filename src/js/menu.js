@@ -144,7 +144,6 @@ MenuItem.prototype = {
   fill: '#666666',
   fillSelected: "rgba(90, 180, 135, .75)",
   fontColor: '#ffffff',
-  selected: false,
   subMenu: null,
   fontSize: 10,
   fontStyle: 'bold',
@@ -157,6 +156,9 @@ MenuItem.prototype = {
   down: null,
   index: null,
   anchor: anchor,
+  menuScale: 0,
+  menuState: 0,
+  menuAnimating: false,
   getX: function(){
     return this.anchor.getX() + this.x;
   },
@@ -187,9 +189,14 @@ MenuItem.prototype = {
 
   drawSubMenu: function(){
     if(this.subMenu){
+      this.ctx.save();
+      var shiftY = this.getY() - (this.getY()*this.menuScale);
+      this.ctx.translate(0, shiftY);
+      this.ctx.scale(1, this.menuScale);
       for (i in this.subMenu){
         this.subMenu[i].draw();
       }
+      this.ctx.restore();
     }
   },
 
@@ -201,6 +208,53 @@ MenuItem.prototype = {
     }
     if (this.drawLabel){
       this.drawLabel();
+    }
+
+    if (this.menuScale !== 0){
+      this.drawSubMenu();
+    }
+  },
+  openSubMenu: function(duration){
+    if(this.subMenu){
+      if (!this.menuAnimating){
+        this.menuAnimating = true;
+        var time = new Date().getTime() + duration;
+        this.animateSubMenu(-1, 1, time, duration);
+      } else {
+        var self = this;
+        setTimeout(function(){
+          self.openSubMenu(duration);
+        }, 100);
+      }
+    }
+  },
+  closeSubMenu: function(duration){
+    if (this.subMenu){
+      if(!this.menuAnimating){
+        this.menuAnimating = true;
+        var time = new Date().getTime() + duration;
+        this.animateSubMenu(1, 0, time, duration);
+      } else {
+        var self = this;
+        setTimeout(function(){
+          self.closeSubMenu(duration);
+        }, 100);
+      }
+    }
+  },
+  animateSubMenu: function(dir, end, endTime, duration){
+    var time = new Date().getTime()
+    if (time >= endTime){
+      this.menuScale = end;
+      this.menuAnimating = false;
+      main.draw();
+    } else {
+      this.menuScale = end + (dir * ((endTime - time)/duration));
+      main.draw();
+      var self = this;
+      requestAnimationFrame(function(){
+        self.animateSubMenu(dir, end, endTime, duration);
+      });
     }
   }
 }
@@ -315,6 +369,7 @@ function Menu(items){
     this.items[i].init_submenu();
   }
   this.selected = this.items[this.start_index];
+  this.selected.menuScale = 1;
   var self = this;
   document.body.addEventListener('keydown', function(e){
     self.dispatch(e);
@@ -355,6 +410,8 @@ Menu.prototype = {
     }
     if(new_selection && new_selection.index !== this.selected.index){
       this.anchor.x += (d*10);
+      new_selection.openSubMenu(100);
+      this.selected.closeSubMenu(100);
     }
     this.selected = new_selection || this.selected;
     this.draw();
@@ -392,7 +449,6 @@ Menu.prototype = {
     for (i in this.items){
       this.items[i].draw();
     }
-    this.items[this.selected.index].drawSubMenu();
     this.selected.drawSelected();
   },
   visible: true,
@@ -400,6 +456,7 @@ Menu.prototype = {
 
 }
 
+var main;
 config.init();
 MenuItem.prototype.images = config.images;
 
@@ -408,9 +465,10 @@ function draw(){
   if(canvas.getContext){
     var context = canvas.getContext('2d');
     MenuItem.prototype.ctx = context;
+    MenuItem.prototype.canvas = canvas;
     Menu.prototype.ctx = context;
     Menu.prototype.canvas = canvas;
-    var main = new Menu(config.entries);
+    main = new Menu(config.entries);
     main.draw();
   }
 }
