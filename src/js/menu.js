@@ -18,8 +18,12 @@ function extend(obj){
 
 
 function MenuItem(obj){
+  if (this.initialized){
+    return null;
+  }
   this.extend(obj);
   if (this.icon){
+    this.icon = this.images[this.icon];
     this.iconOffsetX = (this.width - this.icon.width)/2;
     this.iconOffsetY = (this.height - this.icon.height)/2;
   } else {
@@ -39,9 +43,29 @@ function MenuItem(obj){
     this.labelOffsetY += this.icon.height/2 + this.padding;
   }
 
+  if(this.subitems){
+    if(this.subitems.cols === 1){
+      this.subMenu = [];
+      var item = null;
+      var height = this.fontSize*3;
+      var y = this.y;
+      for (i in this.subitems.items){
+        y -= this.padding + height;
+        item = this.subitems.items[i];
+        item.height = height;
+        item.y = y;
+        item.x = this.x;
+        this.subMenu.push(new MenuItem(item));
+      }
+    } else {
+      console.log(this.subitems);
+    }
+  }
+
   this.desiredX = this.x;
   this.desiredY = this.y;
 
+  this.initialized = true;
 }
 
 // menu item can draw itself
@@ -65,6 +89,7 @@ MenuItem.prototype = {
   fontSize: 10,
   fontStyle: 'bold',
   fontFamily: 'Arial',
+  subitems: null,
 
   drawIcon: function(){
     var x = this.x + this.iconOffsetX;
@@ -98,6 +123,11 @@ MenuItem.prototype = {
     }
     if (this.selected){
       this.drawSelected();
+      if(this.subMenu){
+        for (i in this.subMenu){
+          this.subMenu[i].draw();
+        }
+      }
     }
   }
 }
@@ -119,34 +149,59 @@ var config = {
     facebook: 'facebook.png'
   },
   entries: [
-    ['SETTINGS', 'settings', []],
-    ['APPS', 'apps', [
-      ['', 'netflix'],
-      ['', 'twitter'],
-      ['', 'youtube'],
-      ['', 'facebook']]],
-    ['SEAN', 'home', [
-      ['OPTIONS', ''],
-      ['SOPHIE', ''],
-      ['FAMILY', '']]],
-    ['LIVE TV', 'live', [
-      ['WHAT\'S ON', ''],
-      ['GUIDE', '']]],
-    ['RECORDINGS', 'rec', [
-        ['SETUP', ''],
-        ['RECENT', '']]],
-    ['MOVIES', 'movies', [
-        ['RESUME', ''],
-        ['FAVORITES', ''],
-        ['POPULAR', '']]],
-    ['TV SHOWS', 'tv', [
-        ['FAVORITES', ''],
-        ['POPULAR', '']]],
-    ['SEARCH', 'search', [
-        ['CLEAR RECENT', ''],
-        ['NETFLIX', ''],
-        ['SUITS', ''],
-        ['IRON MAN', '']]]
+    {label: 'SETTINGS', icon: 'settings'},
+    {label: 'APPS', icon: 'apps', subitems: {
+      cols: 2,
+      items: [
+        [{icon: 'netflix'}, {icon: 'twitter'}],
+        [{icon: 'youtube'}, {icon: 'facebook'}]
+    ]}},
+    {label: 'SEAN', icon: 'home', subitems: {
+      cols: 1,
+      items: [
+        {label: 'FAMILY'},
+        {label: 'SOPHIE'},
+        {label: 'OPTIONS'}
+      ]
+    }},
+    {label: 'LIVE TV', icon: 'live', subitems: {
+      cols:1,
+      items: [
+        {label:'GUIDE'},
+        {label:'WHAT\'S ON'}
+      ]
+    }},
+    {label: 'RECORDINGS', icon: 'rec', subitems: {
+      cols: 1,
+      items: [
+        {label: 'RECENT'},
+        {label: 'SETUP'}
+      ]
+    }},
+    {label: 'MOVIES', icon: 'movies', subitems: {
+      cols: 1,
+      items: [
+        {label: 'POPULAR'},
+        {label: 'FAVORITES'},
+        {label: 'RESUME'}
+      ]
+    }},
+    {label: 'TV SHOWS', icon: 'tv', subitems: {
+      cols: 1,
+      items: [
+        {label: 'POPULAR'},
+        {label: 'FAVORITES'}
+      ]
+    }},
+    {label: 'SEARCH', icon: 'search', subitems: {
+      cols: 1,
+      items: [
+        {label: 'IRON MAN'},
+        {label: 'SUITS'},
+        {label: 'NETFLIX'},
+        {label: 'CLEAR RECENT'}
+      ]
+    }}
   ],
   items: {},
   init: function(){
@@ -162,19 +217,14 @@ var config = {
   }
 }
 
-
-
 function Menu(items){
   this.items = [];
   var x = this.x;
   var y = this.y;
   for (i in items){
-    item = {
-      x: x,
-      y: y,
-      icon: config.images[items[i][1]],
-      label: items[i][0]
-    }
+    item = items[i];
+    item.x = x;
+    item.y = y;
     this.items.push(new MenuItem(item));
     x += this.padding + this.items[i].width;
   }
@@ -259,6 +309,7 @@ Menu.prototype = {
 }
 
 config.init();
+MenuItem.prototype.images = config.images;
 
 function draw(){
   var canvas = document.getElementById('canvas');
