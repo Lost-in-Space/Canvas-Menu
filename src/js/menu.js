@@ -18,10 +18,13 @@ function extend(obj){
 
 
 function MenuItem(obj){
+  // only initialize once
   if (this.initialized){
     return null;
   }
   this.extend(obj);
+
+  // configure icon if exists
   if (this.icon){
     this.icon = this.images[this.icon];
     this.iconOffsetX = (this.width - this.icon.width)/2;
@@ -30,6 +33,7 @@ function MenuItem(obj){
     this.drawIcon = null;
   }
 
+  // configure label if exists
   if(!this.label){
     this.drawLabel = null;
   } else {
@@ -38,15 +42,18 @@ function MenuItem(obj){
     this.font = this.fontStyle +' '+this.fontSize+'pt '+this.fontFamily;
   }
 
+  // shift icon up and label down if both exist
   if(this.icon && this.label){
     this.iconOffsetY -= this.fontSize/2 + this.padding;
     this.labelOffsetY += this.icon.height/2 + this.padding;
   }
 
+  // Configure Sub menu items, made assumptions based on short term goal
   if(this.subitems){
+    this.subMenu = [];
+    var item = null;
     if(this.subitems.cols === 1){
-      this.subMenu = [];
-      var item = null;
+      // configure single column text only
       var height = this.fontSize*3;
       var y = this.y;
       for (i in this.subitems.items){
@@ -58,7 +65,24 @@ function MenuItem(obj){
         this.subMenu.push(new MenuItem(item));
       }
     } else {
-      console.log(this.subitems);
+      // configure 2 column icon only
+      var width = (this.width - this.padding)/2; // make selections square, half the width of parent - padding
+      var x = this.x;
+      var y = this.y;
+      for (i in this.subitems.items){
+        for (j in this.subitems.items[i]){
+          y -= width + this.padding;
+          item = this.subitems.items[i][j];
+          item.x = x;
+          item.y = y;
+          item.width = width;
+          item.height = width;
+          console.log(item);
+          this.subMenu.push(new MenuItem(item));
+        }
+        x += width + this.padding;
+      }
+
     }
   }
 
@@ -90,6 +114,7 @@ MenuItem.prototype = {
   fontStyle: 'bold',
   fontFamily: 'Arial',
   subitems: null,
+  initialized: false,
 
   drawIcon: function(){
     var x = this.x + this.iconOffsetX;
@@ -225,6 +250,7 @@ function Menu(items){
     item = items[i];
     item.x = x;
     item.y = y;
+    console.log(item);
     this.items.push(new MenuItem(item));
     x += this.padding + this.items[i].width;
   }
