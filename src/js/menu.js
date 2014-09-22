@@ -217,13 +217,21 @@ MenuItem.prototype = {
   },
   rest: function(duration){
     var self = this;
-    this.forceLeft = false;
-    this.forceRight = false;
     if(this.x !== this.restX){
       this.animate(this.restX, this.restY, duration, function(){
         self.rest(duration);
       })
     }
+    if (this.forceLeft && this.left){
+      this.left.forceLeft = true;
+      this.left.rest(duration);
+    }
+    if (this.forceRight && this.right){
+      this.right.forceRight = true;
+      this.right.rest(duration);
+    }
+    this.forceLeft = false;
+    this.forceRight = false;
   },
   hide: function(duration){
     this.animate(this.hiddenX, this.hiddenY, duration);
@@ -240,7 +248,7 @@ MenuItem.prototype = {
       var rightEdge = this.x + this.width + this.padding;
       if (rightEdge > this.right.x){
         this.right.x = rightEdge;
-        this.right.rest(this.duration);
+        this.right.animating = false;
         this.right.checkRightCollision();
       }
     }
@@ -250,7 +258,7 @@ MenuItem.prototype = {
       var leftRightEdge = this.x - this.left.width - this.padding;
       if (leftRightEdge < this.left.x){
         this.left.x = leftRightEdge;
-        this.left.rest(this.duration);
+        this.left.animating = false;
         this.left.checkLeftCollision();
       }
     }
@@ -266,7 +274,7 @@ MenuItem.prototype = {
       if (typeof this.animationComplete === 'function'){
         this.animationComplete();
       }
-    } else {
+    } else if(this.animating){
       var t = 1 - (this.endTime - time) / this.duration;
       this.x = lerp(this.startX, this.desiredX, t);
       this.y = lerp(this.startY, this.desiredY, t);
@@ -522,7 +530,7 @@ Menu.prototype = {
   hide: function(){
     this.visible = false;
     for (var i = 0; i < this.items.length; i++){
-      this.items[i].hide(50);
+      this.items[i].hide(100);
     }
   },
   clear: function(){
