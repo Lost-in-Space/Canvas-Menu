@@ -212,7 +212,7 @@ MenuItem.prototype = {
     }
     var self = this;
     this.animate(this.x + dx, this.y, duration, function(){
-      this.rest(duration);
+      this.rest(duration*2);
     });
   },
   rest: function(duration){
@@ -490,12 +490,12 @@ function Menu(items){
   }
   var hiddenOffsets = [  // contrived values
     [-500, 0],
-    [-10, 500],
-    [-10, 500],
+    [-50, 500],
+    [-50, 500],
     [0, 500],
     [0, 500],
-    [10, 500],
-    [10, 500],
+    [50, 500],
+    [50, 500],
     [500, 0]
   ]
   for (var i = 0; i < items.length; i++){
@@ -530,7 +530,7 @@ Menu.prototype = {
   hide: function(){
     this.visible = false;
     for (var i = 0; i < this.items.length; i++){
-      this.items[i].hide(100);
+      this.items[i].hide(400);
     }
   },
   clear: function(){
@@ -561,9 +561,6 @@ Menu.prototype = {
     }
     this.selected = new_selection || this.selected;
     this.draw();
-  },
-  push: function(index, dir){
-
   },
   dispatch: function(e){
     if(e.keyCode === 77){  // M
