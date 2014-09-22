@@ -170,6 +170,8 @@ MenuItem.prototype = {
   menuScale: 0,
   menuState: 0,
   menuAnimating: false,
+  forceLeft: false,
+  forceRight: false,
   getX: function(){
     return this.anchor.getX() + this.x;
   },
@@ -187,35 +189,78 @@ MenuItem.prototype = {
     this.animating = true;
     this.update();
   },
-  show: function(duration, callback){
+  show: function(duration, delay, callback){
     this.animate(this.restX, this.restY, duration, callback);
     if(this.right && !this.right.animating){
       var right = this.right;
       setTimeout(function(){
-        right.show(duration);
-      }, 50);
+        right.show(duration, delay);
+      }, delay);
     }
     if(this.left && !this.left.animating){
       var left = this.left;
       setTimeout(function(){
-        left.show(duration);
-      }, 50);
+        left.show(duration, delay);
+      }, delay);
+    }
+  },
+  move: function(dx, duration){
+    if (dx < 0){
+      this.forceLeft = true;
+    } else {
+      this.forceRight = true;
+    }
+    var self = this;
+    this.animate(this.x + dx, this.y, duration, function(){
+      this.rest(duration);
+    });
+  },
+  rest: function(duration){
+    var self = this;
+    this.forceLeft = false;
+    this.forceRight = false;
+    if(this.x !== this.restX){
+      this.animate(this.restX, this.restY, duration, function(){
+        self.rest(duration);
+      })
     }
   },
   hide: function(duration){
     this.animate(this.hiddenX, this.hiddenY, duration);
   },
+  checkCollision: function(){
+    if (this.forceLeft){
+      this.checkLeftCollision();
+    } else if (this.forceRight) {
+      this.checkRightCollision();
+    }
+  },
   checkRightCollision: function(){
-
+    if(this.right){
+      var rightEdge = this.x + this.width + this.padding;
+      if (rightEdge > this.right.x){
+        this.right.x = rightEdge;
+        this.right.rest(this.duration);
+        this.right.checkRightCollision();
+      }
+    }
   },
   checkLeftCollision: function(){
-
+    if(this.left){
+      var leftRightEdge = this.x - this.left.width - this.padding;
+      if (leftRightEdge < this.left.x){
+        this.left.x = leftRightEdge;
+        this.left.rest(this.duration);
+        this.left.checkLeftCollision();
+      }
+    }
   },
   update: function(){
     var time = new Date().getTime();
     if(time >= this.endTime){
       this.x = this.desiredX;
       this.y = this.desiredY;
+      this.checkCollision();
       main.draw();
       this.animating = false;
       if (typeof this.animationComplete === 'function'){
@@ -225,7 +270,7 @@ MenuItem.prototype = {
       var t = 1 - (this.endTime - time) / this.duration;
       this.x = lerp(this.startX, this.desiredX, t);
       this.y = lerp(this.startY, this.desiredY, t);
-
+      this.checkCollision();
       main.draw();
       var self = this;
       requestAnimationFrame(function(){
@@ -467,7 +512,7 @@ Menu.prototype = {
     var first = this.items[this.selected.index];
     var myself = this;
     first.menuScale = 0;
-    first.show(100, function(){
+    first.show(400, 100, function(){
       first.openSubMenu(100, function(){
         myself.visible = true;
         console.log(myself);
@@ -504,6 +549,7 @@ Menu.prototype = {
       this.anchor.x += (d*10);
       this.items[new_selection.index].openSubMenu(100);
       this.items[this.selected.index].closeSubMenu(100);
+      this.items[this.selected.index].move(d*100, 500);
     }
     this.selected = new_selection || this.selected;
     this.draw();
