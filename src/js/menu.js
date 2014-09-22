@@ -456,18 +456,17 @@ Menu.prototype = {
   anchor: anchor,
   show: function(){
     this.visible = true;
-    this.items[this.selected.index].show(500);
+    var first = this.items[this.selected.index];
+    first.menuScale = 0;
+    first.show(100, function(){
+      first.openSubMenu(100);
+    });
   },
   hide: function(){
     this.visible = false;
     for (var i = 0; i < this.items.length; i++){
-      this.items[i].hide(500);
+      this.items[i].hide(50);
     }
-  },
-  animate: function(duration){
-    var self = this;
-    this.animating = true;
-
   },
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
