@@ -205,6 +205,12 @@ MenuItem.prototype = {
   hide: function(duration){
     this.animate(this.hiddenX, this.hiddenY, duration);
   },
+  checkRightCollision: function(){
+
+  },
+  checkLeftCollision: function(){
+
+  },
   update: function(){
     var time = new Date().getTime();
     if(time >= this.endTime){
@@ -275,46 +281,49 @@ MenuItem.prototype = {
       this.drawSubMenu();
     }
   },
-  openSubMenu: function(duration){
+  openSubMenu: function(duration, callback){
     if(this.subMenu){
       if (!this.menuAnimating){
         this.menuAnimating = true;
         var time = new Date().getTime() + duration;
-        this.animateSubMenu(-1, 1, time, duration);
+        this.animateSubMenu(-1, 1, time, duration, callback);
       } else {
         var self = this;
         setTimeout(function(){
-          self.openSubMenu(duration);
+          self.openSubMenu(duration, callback);
         }, 100);
       }
     }
   },
-  closeSubMenu: function(duration){
+  closeSubMenu: function(duration, callback){
     if (this.subMenu){
       if(!this.menuAnimating){
         this.menuAnimating = true;
         var time = new Date().getTime() + duration;
-        this.animateSubMenu(1, 0, time, duration);
+        this.animateSubMenu(1, 0, time, duration, callback);
       } else {
         var self = this;
         setTimeout(function(){
-          self.closeSubMenu(duration);
+          self.closeSubMenu(duration, callback);
         }, 100);
       }
     }
   },
-  animateSubMenu: function(dir, end, endTime, duration){
+  animateSubMenu: function(dir, end, endTime, duration, callback){
     var time = new Date().getTime()
     if (time >= endTime){
       this.menuScale = end;
       this.menuAnimating = false;
+      if(typeof callback === 'function'){
+        callback();
+      }
       main.draw();
     } else {
       this.menuScale = end + (dir * ((endTime - time)/duration));
       main.draw();
       var self = this;
       requestAnimationFrame(function(){
-        self.animateSubMenu(dir, end, endTime, duration);
+        self.animateSubMenu(dir, end, endTime, duration, callback);
       });
     }
   }
@@ -455,11 +464,14 @@ Menu.prototype = {
   padding: 5,
   anchor: anchor,
   show: function(){
-    this.visible = true;
     var first = this.items[this.selected.index];
+    var myself = this;
     first.menuScale = 0;
     first.show(100, function(){
-      first.openSubMenu(100);
+      first.openSubMenu(100, function(){
+        myself.visible = true;
+        console.log(myself);
+      });
     });
   },
   hide: function(){
@@ -529,7 +541,9 @@ Menu.prototype = {
     for (i in this.items){
       this.items[i].draw();
     }
-    this.selected.drawSelected();
+    if (this.visible){
+      this.selected.drawSelected();
+    }
   },
   visible: true,
   start_index: 3,
