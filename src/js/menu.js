@@ -16,6 +16,11 @@ function extend(obj){
     this[x] = obj[x];
 }
 
+function lerp(v0, v1, t){
+  return v0 + t * (v1 - v0);
+}
+
+// shared point of origin object...
 var anchor = {
   x: 0,
   y: 0,
@@ -60,7 +65,9 @@ function MenuItem(obj){
 
 
   this.desiredX = this.x;
+  this.restX = this.x;
   this.desiredY = this.y;
+  this.restY = this.y;
 
   this.initialized = true;
 }
@@ -133,9 +140,13 @@ MenuItem.prototype = {
     }
   },
   extend: extend,
-  x: 0,
+  x: 0,         // offset of current position
   y: 0,
-  desiredX: 0,
+  restX: 0,     // offset when menu shown
+  restY: 0,
+  hiddenX: 0,   // offset when menu hidden
+  hiddenY: 0,
+  desiredX: 0,  // offset of desired position
   desiredY: 0,
   label: null,
   icon: null,
@@ -165,7 +176,57 @@ MenuItem.prototype = {
   getY: function(){
     return this.anchor.getY() + this.y;
   },
+  animate: function(x, y, duration, callback){
+    this.duration = duration;
+    this.startX = this.x;
+    this.desiredX = x;
+    this.startY = this.y;
+    this.desiredY = y;
+    this.endTime = new Date().getTime() + this.duration;
+    this.animationComplete = callback;
+    this.animating = true;
+    this.update();
+  },
+  show: function(duration, callback){
+    this.animate(this.restX, this.restY, duration, callback);
+    if(this.right && !this.right.animating){
+      var right = this.right;
+      setTimeout(function(){
+        right.show(duration);
+      }, 50);
+    }
+    if(this.left && !this.left.animating){
+      var left = this.left;
+      setTimeout(function(){
+        left.show(duration);
+      }, 50);
+    }
+  },
+  hide: function(duration){
+    this.animate(this.hiddenX, this.hiddenY, duration);
+  },
+  update: function(){
+    var time = new Date().getTime();
+    if(time >= this.endTime){
+      this.x = this.desiredX;
+      this.y = this.desiredY;
+      main.draw();
+      this.animating = false;
+      if (typeof this.animationComplete === 'function'){
+        this.animationComplete();
+      }
+    } else {
+      var t = 1 - (this.endTime - time) / this.duration;
+      this.x = lerp(this.startX, this.desiredX, t);
+      this.y = lerp(this.startY, this.desiredY, t);
 
+      main.draw();
+      var self = this;
+      requestAnimationFrame(function(){
+        self.update();
+      });
+    }
+  },
   drawIcon: function(){
     var x = this.getX() + this.iconOffsetX;
     var y = this.getY() + this.iconOffsetY;
@@ -277,7 +338,8 @@ var config = {
   },
   entries: [
     {label: 'SETTINGS', icon: 'settings'},
-    {label: 'APPS', icon: 'apps', subitems: {
+    {label: 'APPS',
+      icon: 'apps', subitems: {
       cols: 2,
       items: [
         [{icon: 'netflix'}, {icon: 'twitter'}],
@@ -350,7 +412,8 @@ function Menu(items){
   this.anchor.y = 540;
   var x = 0;
   var left = null;
-  for (i in items){
+  var item;
+  for (var i = 0; i < items.length; i++){
     item = items[i];
     item.x = x;
     item.index = i;
@@ -360,13 +423,24 @@ function Menu(items){
       left.right = item;
     }
     left = item;
-    console.log(item);
     this.items.push(item);
     x += this.padding + this.items[i].width;
   }
-
-  for (i in this.items){
-    this.items[i].init_submenu();
+  var hiddenOffsets = [  // contrived values
+    [-500, 0],
+    [-10, 500],
+    [-10, 500],
+    [0, 500],
+    [0, 500],
+    [10, 500],
+    [10, 500],
+    [500, 0]
+  ]
+  for (var i = 0; i < items.length; i++){
+    item = this.items[i];
+    item.init_submenu();
+    item.hiddenX = hiddenOffsets[i][0] + item.restX;
+    item.hiddenY = hiddenOffsets[i][1] + item.restY;
   }
   this.selected = this.items[this.start_index];
   this.selected.menuScale = 1;
@@ -382,11 +456,18 @@ Menu.prototype = {
   anchor: anchor,
   show: function(){
     this.visible = true;
-    this.draw();
+    this.items[this.selected.index].show(500);
   },
   hide: function(){
     this.visible = false;
-    this.clear();
+    for (var i = 0; i < this.items.length; i++){
+      this.items[i].hide(500);
+    }
+  },
+  animate: function(duration){
+    var self = this;
+    this.animating = true;
+
   },
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
